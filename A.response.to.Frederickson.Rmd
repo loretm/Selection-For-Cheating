@@ -104,7 +104,7 @@ kable(new.table, format="markdown", align="c")
 
 The TC can be broken up into four parts, which we deal with in order:
 
-# 1.	The TC asserted that the Bradyrhizobium populations were unevenly sampled by GCC, leading to biases in genotype frequencies among the populations.
+<h2> 1.	The TC asserted that the Bradyrhizobium populations were unevenly sampled by GCC, leading to biases in genotype frequencies among the populations </h2>
 
 To support the assertion of uneven sampling, the TC first analyzed associations between sampling effort and Bradyrhizobium genotype frequencies in each population, but incorrectly sampled only the 26 focal isolates for which fitness data were analyzed (rather than the population of 444 isolates from which frequency data were derived).
 
@@ -447,7 +447,7 @@ ggsave("Fig1.pdf", plot=Fig1, device="pdf", scale = 1, width = 30, height = 15, 
 #Fig1           
 ```
 
-# 2.	The TC attempted to account for uneven sampling by relativizing fitness parameters within each population.
+<h2> 2.	The TC attempted to account for uneven sampling by relativizing fitness parameters within each population </h2>
 
 The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. 
 Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
