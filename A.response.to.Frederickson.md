@@ -89,7 +89,7 @@ Up to here we have the data as reported by Frederickson:
 The TC can be broken up into four parts, which we deal with in order:
 
 1. The TC asserted that the Bradyrhizobium populations were unevenly sampled by GCC, leading to biases in genotype frequencies among the populations.
------------------------------------------------------------------------------------------------------------------------------------------------------
+=====================================================================================================================================================
 
 To support the assertion of uneven sampling, the TC first analyzed associations between sampling effort and Bradyrhizobium genotype frequencies in each population, but incorrectly sampled only the 26 focal isolates for which fitness data were analyzed (rather than the population of 444 isolates from which frequency data were derived).
 
@@ -419,28 +419,29 @@ For the chromosomal dataset there are no significant differences in genotype fre
 However, there were differences in symbiosis-island genotype frequencies among populations (and there were correlations between genotype frequencies and sampling effort. Thus, the fundamental argument of the TC is incorrect for the chromosomal dataset.
 
 2. The TC attempted to account for uneven sampling by relativizing fitness parameters within each population.
--------------------------------------------------------------------------------------------------------------
+=============================================================================================================
 
 The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
 
--   Let's define
-    *y*<sub>*X**A*</sub>
-     as the haplotype frequency of isolate X in Population A
+Lets define the haplotype frequency of isolate X in Population "a" as Y<sub>xa</sub>, which is estimated by counting the number of isolates X and dividing by the total count of all isolates in population a:
 
-*y*<sub>*X**A*</sub> = *c**o**u**n**t**o**f**i**s**o**l**a**t**e**X*/*c**o**u**n**t**o**f**a**l**l**i**s**o**l**a**t**e**s**i**n**p**o**p**u**l**a**t**i**o**n**A*
-*y*<sub>*X**A*</sub> = *X*<sub>*i*</sub>/*X*<sub>*A*</sub>
+Y<sub>xa</sub> = count of isolate X / count of all isolates in population a
 
--   Let's define
-    *Y*<sub>*A*</sub>
-     as the mean strain frequency in Population A, estimated as the sum of the haplotype frequencies of all isolates found in population A divided by the count of all isolates in population A
+or Y<sub>xa</sub> = X<sub>i</sub> / X<sub>a</sub>
 
-$$Y\_{A} = (\\sum\_{i=1}^XX\_{i}/X\_{A})/X\_{A}$$
- Now if we were to estimate the relative fitness of haplotype X as Frederickson propose, the estimate would be based in the following equation where the haplotype frequency of isolate X in Population A would be divided by the mean haplotype frequency in Population A (i.e. YA):
+Let's define Y<sub>a as the mean strain frequency in Population "a", estimated as the sum of the haplotype frequencies of all isolates found in population A divided by the count of all isolates in population "a"
 
-$$y\_{XA} = \[ X\_{i}/X\_{A}\]/Y\_{A} = \[ X\_{i}/X\_{A}\]/\[(\\sum\_{i=1}^XX\_{i}/X\_{A})/X\_{A}\]$$
- To resolve this equation we have a division with a common denominator, and ultimately what we resolve is as follows:
+Y<sub>a</sub> = ∑X</sub>i</sub> / X<sub>a</sub>
 
-*y*<sub>*X**A*</sub> = *X*<sub>*i*</sub>/*X*<sub>*A*</sub>
+Now if we were to estimate the relative fitness of haplotype X as Frederickson propose, the estimate would be based in the following equation where the haplotype frequency of isolate X in Population "a" would be divided by the mean haplotype frequency in Population "a" (i.e. Y<sub>a</sub>):
+
+Y<sub>xa</sub> = (X</sub>i</sub>) / (X<sub>a</sub>/Y<sub>a</sub> , resolving this equation we would have the following:
+
+Y<sub>xa</sub> = (X<sub>i</sub>) / () X<sub>a</sub>) / ∑X</sub>i</sub> / X<sub>a</sub>)
+
+To resolve this equation we have a division with a common denominator, and ultimately what we resolve is our original equation:
+
+Y<sub>xa</sub> = X</sub>i</sub> / X<sub>a</sub>
 
 As it can be observed in the equation, conceptually just by estimating the haplotype frequency within populations we would be relativizing the haplotype frequencies. This indicates that in in Gano-Cohen the haplotype frequencies as a measure of fitness can be compared among populations as a proxy of relative fitness. However, if this is again relativized as Frederickson proposed different values are obtained.Let's compare these estimates:
 
@@ -473,7 +474,7 @@ FrequencyEstimation.effect <- ggarrange(CHRfreqplot, SIfreqplot,ncol=2,nrow=1, c
 In this plot we can see how relativizing the haplotype frequencies (CHR\_std & SI\_std) can drastically change the original estimations obtained in Gano-Cohen (CHR\_nostd & SI\_nostd) and are not at all the same measures as they should be based on the above mathematical solution. We find it very difficult to interpret these data that are relativized twice.
 
 3. The TC attempted to account for uneven sampling by randomly sub-sampling the dataset to equalize sampling effort among populations.
---------------------------------------------------------------------------------------------------------------------------------------
+======================================================================================================================================
 
 For rarefaction methods, there is a classical dichotomy between sample-based versus individual-based sampling protocols, which in this case would equalize numbers of plants or numbers of nodule isolates sampled, respectively. Both rarefaction methods are valid for standardizing samples, but each strategy can change the estimates of community diversity and richness.
 
@@ -979,7 +980,7 @@ Figure.2CDE
 ![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-24-1.png)
 
 4. Comparing sampled-based and individual-based approaches
-----------------------------------------------------------
+==========================================================
 
 Finally, we compared the sample-based and individual-based approaches to examine how each performed in terms of equalizing the populations. For instance, when performing sample-based rarefaction (i.e., by plants) this leads to variation in the number of nodule-isolates sampled, and when performing individual-bases rarefaction (i.e., by nodules) this leads to variation in the number of plants sampled. To compare the approaches we calculated the coefficient of variation among populations (CV), which is a unitless measure.
 
