@@ -1,0 +1,1330 @@
+Selection for cheating in a metapopulation of mutualists – A response to Frederickson
+================
+J. Sachs & L. Torres-Martinez
+9/30/2019
+
+Gano-Cohen and colleagues (2019, Ecol. Lett. 22, 914; hereafter GCC) reported Bradyrhizobium strains that provide negligible benefit to legumes and that experience superior fitness in planta, consistent with a fitness-based definition of cheating. GCC also demonstrated a negative association between the host-growth benefits provided by Bradyrhizobium strains and their local genotype frequencies across an 800km metapopulation, evidence that selection favors cheating at a geographic scale. The negative association was significant for both the Bradyrhizobium chromosome (i.e., CHR) and symbiosis-island (i.e., SI), two genome regions that can evolve independently.
+
+A technical comment, hereafter TC (Frederickson 2019), proposed that the negative association between strain frequency and host-growth benefits is an artifact of uneven population sampling, stating that “highly unequal sampling results in differences in mean strain frequency among the six study populations.” However, Frederickson’s analyses included sampling and mathematical errors, and rarefaction approaches that we view as overly conservative.
+
+We respond in detail to the TC here.
+
+First, we need to read the files from GCC as proposed by the TC in an associated Github page (<https://github.com/drfreder/selection-for-cheating>).
+
+``` r
+#Reading Table.S1 from Gano-Cohen:
+table_S1 <- read_csv("Table_S1.csv", col_names = c("Full_Strain_Name", "Year", "Population", "glnII_Haplotype", "recA_Haplotype", "nodZ_Haplotype",  "nolL_Haplotype"), col_types = cols(Year = col_number(), Population = col_factor(levels = c("ANZ",  "BMR", "CLA", "GRI", "UCR", "YUC"))), skip = 2)
+
+#Reading Table.S4 from Gano-Cohen:
+table_S4 <- read_csv("Table_S4.csv", col_types = cols(Strain = col_factor(levels = c("132", "133", "134", "135", "136", "137", "138", "139", "140", "141", "142", "143", "144", "145", "146", "147", "148", "149", "150", "151", "152", "153", "154", "155", "156", "157", "158", "159", "160", "161", "control")), `Host Line` = col_factor(levels = c("BMR01.03", "BMR07.03", "UnH: Cla12.04", "UnL: Anz13.04", "A. heermannii", "Gri01.01", "Gri01.13", "Cla10.01", "Cla01.04", "UCR02.07", "UCR09.05", "Yuc02.07", "Yuc02.01", "Anz11.01", "Anz10.01")), Block = col_factor(levels = c("1", "2", "3", "4", "5")), `CHR local abundance` = col_number(), `Mean individual  nodule biomass (mg)` = col_number(), `Mineral N (ppm)` = col_number(), `Plant #` = col_number(), Population = col_factor(levels = c("ANZ",  "BMR", "CLA", "GRI", "UCR", "YUC")), `Relative Growth` = col_number(), `Roots mass (g)` = col_number(), `Shoots mass (g)` = col_number(), `Total N (%)` = col_number(), `Total nodules` = col_number()), skip=1)
+
+#Reading Table.S2 from Gano-Cohen:
+table_S2 <- read_csv("Table_S2.csv", col_names = c("Strain", "Full_Strain_Name", "Population", "Latitude", "Longitude", "glnII_Haplotype", "glnII_Accession", "recA_Haplotype", "recA_Accession", "nodZ_Haplotype", "nodZ_Accession", "nolL_Haplotype", "nolL_Accession", "CHR_haplotype", "CHR genotype frequency" , "SI_haplotype", "SI genotype frequency"), col_types = cols(Strain = col_factor(levels = c("132", "133", "134", "135", "136", "137", "138", "139", "140", "141", "142", "143", "144", "145", "146", "147", "148", "149", "150", "151", "152", "153", "154", "155", "156", "157", "158", "159", "160", "161")), `CHR genotype frequency` = col_number(), `SI genotype frequency` = col_number(), Population = col_factor(levels = c("Bodega Marine Reserve", "Griffith Park", "Robert J. Bernard Biological Field Station", "University of California Riverside", "Burns Pinon Ridge Reserve", "Anza Borrego Desert State Park"))), skip = 4)
+```
+
+Now we need to edit the files in the same fashion as done by Frederickson in her Github page:
+
+``` r
+table_S4$pop_block <- paste0(table_S4$Block, table_S4$`Host Line`) #Make a unique identifier for each block-host line combination
+table_S4$Plant_biomass <- table_S4$`Shoots mass (g)`+table_S4$`Roots mass (g)` #Sum root and shoot mass
+tmp <- subset(table_S4, Strain == "control") #Subset control plants only
+table_S4 <- merge(table_S4, tmp[, c(1, 17, 18)], by="pop_block") #Match inoculated plants to controls based on which block and host line theywere
+#The footnotes for Table 1 in the original paper says when controls were substituted, so I follow suit here
+table_S4[table_S4$`Plant #.y` == 111, 20] <- table_S4[table_S4$`Plant #.y` == 106, 20] #Sub 106 for 111
+table_S4[table_S4$`Plant #.y` == 222, 20] <- table_S4[table_S4$`Plant #.y` == 216, 20] #Sub 216 for 222
+table_S4[table_S4$`Plant #.y` == 669, 20] <- mean(c(unique(table_S4[table_S4$`Plant #.y` == 651, 20]), unique(table_S4[table_S4$`Plant #.y` == 660, 20]), unique(table_S4[table_S4$`Plant #.y` == 663, 20]), unique(table_S4[table_S4$`Plant #.y` == 680, 20]), unique(table_S4[table_S4$`Plant #.y` == 684, 20]))) #Sub mean of 651, 660, 663, 680, and 684 for 669
+table_S4 <- subset(table_S4, `Shoots mass (g)` != "DEAD") #Exclude dead plants, as per paper
+table_S4 <- subset(table_S4, Strain != "control") #Exclude uninoculated controls, as per paper
+table_S4 <- subset(table_S4, `Total nodules` > 0) #Exclude inoculated plants that formed no nodules, as per paper
+table_S4$RGR <- table_S4$Plant_biomass.x/table_S4$Plant_biomass.y #Re-calculate RGR (values look better)
+table_S4$logRGR <- log10(table_S4$RGR) #Log-transform RGR, as per paper
+
+
+table_S1$SI_haplotype <- paste0(table_S1$nodZ_Haplotype, "_", table_S1$nolL_Haplotype) #Concatenate SI haplotypes, as per paper
+table_S1$CHR_haplotype <- paste0(table_S1$glnII_Haplotype, "_", table_S1$recA_Haplotype) #Concatenate CHR haplotypes, as per paper
+
+table_S2$Population <- ifelse(table_S2$Population == "Bodega Marine Reserve", "BMR", ifelse(table_S2$Population == "Griffith Park", "GRI", ifelse(table_S2$Population == "Robert J. Bernard Biological Field Station", "CLA", ifelse(table_S2$Population == "University of California Riverside", "UCR", ifelse(table_S2$Population == "Anza Borrego Desert State Park", "ANZ", "YUC"))))) #Abbreviate Table_S2 population names, to make them match across data tables
+
+table_S1$Plant_ID <- gsub('R.*', "", (toupper(gsub('_.*', "", table_S1$Full_Strain_Name)))) #Make a column of unique plant ids
+
+table_S1 <- table_S1[,c(1, 10, 2:9)] #Reorder columns
+table_S1.long <- gather(table_S1, locus, haplotype, glnII_Haplotype:CHR_haplotype, factor_key=TRUE) #Make wide data into long format
+table_S1.long <- subset(subset(table_S1.long, haplotype != "n/an/a"), haplotype != "n/a_n/a")  #Remove NAs
+table_S1.long <- subset(table_S1.long, locus == "SI_haplotype" | locus == "CHR_haplotype") #Subset to just CHR and SI haplotypes
+
+#Calculate nodules and plants sampled per population
+new.table <- table_S1.long %>% dplyr::group_by(Population, locus) %>% dplyr::summarize(total_nods_sampled=n_distinct(Full_Strain_Name),total_plants_sampled=length(unique(Plant_ID))) #Summarize data by locus and population
+new.table.long <- merge(subset(new.table, locus == "SI_haplotype"), subset(new.table, locus == "CHR_haplotype"), by="Population") #Make wide data long
+new.table.long <- new.table.long[, c(1,3,4,6,7)]
+colnames(new.table.long) <- c("Population", "SI_nods_sampled", "SI_plants_sampled", "CHR_nods_sampled", "CHR_plants_sampled")
+
+#Merge number of nodules and plants sampled with Table S2 data
+table_S2 <- merge(table_S2, new.table.long, by="Population", all.x = TRUE) #Add sampling effort to Table 2
+
+#Calculate strain means in Table S4
+data_sym <- subset(table_S4, `Host Line` != "A. heermannii" & `Host Line` != "UnH: Cla12.04" & `Host Line` != "UnL: Anz13.04")
+new.table2 <- data_sym %>% dplyr::group_by(Population, Strain) %>% dplyr::summarize(mean_RGR = mean(`Relative Growth`, na.rm=TRUE), mean_total_nodules = mean(`Total nodules`, na.rm=TRUE), mean_nodule_mass = mean(`Mean individual  nodule biomass (mg)`, na.rm=TRUE), mean_log10_RGR = mean(logRGR, na.rm=TRUE)) #Calculate means
+
+#Merge data in Tables S2 and S4 into a single data frame
+df <- merge(table_S2, new.table2[ ,2:6], by="Strain") 
+```
+
+Up to here we have the data as reported by Frederickson:
+
+| Population | Locus | Nodules sampled (no) | Plants sampled (no) |
+|:----------:|:-----:|:--------------------:|:-------------------:|
+|     ANZ    |   SI  |          43          |          4          |
+|     ANZ    |  CHR  |          44          |          4          |
+|     BMR    |   SI  |          108         |          16         |
+|     BMR    |  CHR  |          137         |          16         |
+|     CLA    |   SI  |          68          |          20         |
+|     CLA    |  CHR  |          68          |          20         |
+|     GRI    |   SI  |           4          |          4          |
+|     GRI    |  CHR  |          68          |          18         |
+|     UCR    |   SI  |          17          |          5          |
+|     UCR    |  CHR  |          88          |          31         |
+|     YUC    |   SI  |          15          |          2          |
+|     YUC    |  CHR  |          39          |          7          |
+
+The TC can be broken up into four parts, which we deal with in order:
+
+1. The TC asserted that the Bradyrhizobium populations were unevenly sampled by GCC, leading to biases in genotype frequencies among the populations.
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+To support the assertion of uneven sampling, the TC first analyzed associations between sampling effort and Bradyrhizobium genotype frequencies in each population, but incorrectly sampled only the 26 focal isolates for which fitness data were analyzed (rather than the population of 444 isolates from which frequency data were derived).
+
+``` r
+#Number of strains used in TC
+length(df$Strain)  
+```
+
+    ## [1] 26
+
+``` r
+#Number of strains used here
+table_S1.CHR <- table_S1
+length(table_S1.CHR$Full_Strain_Name)
+```
+
+    ## [1] 444
+
+We used the full dataset to test for variation in genotype frequencies among sampled populations and their association with sampling effort.
+
+### First, we tested if the initially sampled frequencies differed among populations.
+
+#### For CHR:
+
+``` r
+#Because we are going to manipulate the missing data from SI separately from the CHR data we are making a distinction between these two #tables:
+table_S1.CHR <- table_S1
+
+#Calculating genotype frequencies
+haplocount.CHRbyNod=NULL 
+haplocountlist = list()
+  for (site in unique(table_S1.CHR$Population)){ #Sample within each population
+    Nodlist=subset(table_S1.CHR$Full_Strain_Name,table_S1.CHR$Population == site, drop=TRUE)
+    outputVector=factor(Nodlist) #Transforming into vector to subset data
+    new=table_S1.CHR[table_S1.CHR$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled isolates. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$CHR_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyNod=rbind(haplocount.CHRbyNod,totalhaplocounts)  #combining all results
+  
+#Are CHR genotype frequencies different among populations?:
+modelfreqbypop.CHR <- lm(Freq ~ Population,data=haplocount.CHRbyNod)
+anova(modelfreqbypop.CHR)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##            Df  Sum Sq  Mean Sq F value Pr(>F)
+    ## Population  5 0.15911 0.031822  1.4499 0.2176
+    ## Residuals  69 1.51438 0.021948
+
+For the CHR genotype frequencies do not differ among populations
+
+#### For SI
+
+``` r
+table_S1.SI <- subset(table_S1, table_S1$SI_haplotype != "n/a_n/a", drop=TRUE) #Removing NA's from dataset
+
+haplocount.SIbyNod=NULL #This needs to be set up to store our final output of the random 
+haplocountlist = list()
+  for (site in unique(table_S1.SI$Population)){
+    Nodlist=subset(table_S1.SI$Full_Strain_Name,table_S1.SI$Population==site, drop=TRUE)
+    outputVector=factor(Nodlist) #Transforming into vector to subset data
+    new=table_S1.SI[table_S1.SI$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.SIbyNod=rbind(haplocount.SIbyNod,totalhaplocounts)  #combining all results
+  
+#Are SI genotype frequencies different among populations?:
+
+modelfreqbypop.SI <- lm(Freq ~ Population,data=haplocount.SIbyNod)
+anova(modelfreqbypop.SI)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##            Df  Sum Sq  Mean Sq F value    Pr(>F)    
+    ## Population  5 0.28828 0.057657   15.11 9.985e-11 ***
+    ## Residuals  89 0.33961 0.003816                      
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+For the SI genotype frequecies are different among populations
+
+Ploting the genotype frequencies for both genes:
+
+``` r
+FreqCHRbypop <- ggplot(haplocount.CHRbyNod, aes(x=Population, y=Freq, color=Population)) + geom_point() +
+  geom_jitter() +
+  ylab("Genotype Frequencies") +
+  ggtitle("Chromosome") +
+  theme(panel.background = element_rect(fill = "white", colour = "black"), 
+  axis.title.x = element_text(face="bold", vjust=1.0, size = 14), 
+  axis.title.y = element_text(face="bold", vjust=1.0, size = 14),
+  #axis.title.y = element_blank(),
+  axis.text.x = element_text(size=12, colour ="black"), 
+  axis.text.y = element_text(size=12, colour ="black"), 
+  panel.grid.major.y = element_blank(),
+  panel.grid.minor.y = element_blank(),
+  panel.grid.minor.x = element_blank(),
+  panel.grid.major.x = element_blank(), 
+  plot.title = element_text(hjust = 0.5),
+  legend.position="top") +
+  stat_compare_means(method = "anova", label = "p.format") +
+  guides(col = guide_legend(nrow = 1, override.aes = aes(label = ""))) 
+
+
+FreqSIbypop <- ggplot(haplocount.SIbyNod, aes(x=Population, y=Freq, color=Population)) + geom_point() +  ggtitle("Symbiosis Island") +
+  geom_jitter() +
+  ylab(NULL) +
+  theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),axis.text.x = element_text(size=12, colour ="black"),axis.text.y = element_text(size=12, colour ="black"), panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),
+panel.grid.minor.x = element_blank(),panel.grid.major.x = element_blank(),plot.title = element_text(hjust = 0.5)) +
+stat_compare_means(method = "anova", label = "p.format") + # Add global annova p-value
+guides(col = guide_legend(nrow = 1, override.aes = aes(label = ""))) 
+         
+ 
+FIG.1AB <- ggarrange(FreqCHRbypop, FreqSIbypop, ncol=2, nrow=1, labels=c("a", "b"), common.legend = TRUE, legend="top") 
+FIG.1AB  
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-7-1.png)
+
+### Next, we test if variation in genotype frequencies among sampled populations is associated with sampling effort
+
+``` r
+#Firts we need to combine the estimated frequencies with the  number of nodules and plants sampled per population
+df.CHR <- merge(haplocount.CHRbyNod, df[,c(2,18:21)], by="Population") 
+df.CHR <- distinct(df.CHR, Population,haplolist, .keep_all= TRUE)
+df.SI <- merge(haplocount.SIbyNod, df[,c(2,18:21)], by="Population") 
+df.SI <- distinct(df.SI, Population,haplolist, .keep_all= TRUE)
+
+#For the CHR gene with respect to the number of plants sampled:
+lmCHR.plants <- lm(Freq ~ CHR_plants_sampled, data=df.CHR)
+summary(lmCHR.plants)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ CHR_plants_sampled, data = df.CHR)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.09187 -0.07003 -0.06113 -0.01943  0.65462 
+    ## 
+    ## Coefficients:
+    ##                     Estimate Std. Error t value Pr(>|t|)   
+    ## (Intercept)         0.124283   0.040364   3.079  0.00293 **
+    ## CHR_plants_sampled -0.002422   0.001995  -1.214  0.22851   
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1499 on 73 degrees of freedom
+    ## Multiple R-squared:  0.0198, Adjusted R-squared:  0.006375 
+    ## F-statistic: 1.475 on 1 and 73 DF,  p-value: 0.2285
+
+``` r
+anova(lmCHR.plants)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                    Df  Sum Sq  Mean Sq F value Pr(>F)
+    ## CHR_plants_sampled  1 0.03314 0.033139  1.4748 0.2285
+    ## Residuals          73 1.64035 0.022471
+
+``` r
+# For the CHR gene with respect to the number of nodules sampled:
+lmCHR.nods <- lm(Freq ~ CHR_nods_sampled, data=df.CHR)
+summary(lmCHR.nods)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ CHR_nods_sampled, data = df.CHR)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.08702 -0.07692 -0.05439 -0.01603  0.64367 
+    ## 
+    ## Coefficients:
+    ##                    Estimate Std. Error t value Pr(>|t|)   
+    ## (Intercept)       0.1409527  0.0468877   3.006  0.00363 **
+    ## CHR_nods_sampled -0.0007254  0.0005189  -1.398  0.16633   
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1494 on 73 degrees of freedom
+    ## Multiple R-squared:  0.02608,    Adjusted R-squared:  0.01274 
+    ## F-statistic: 1.955 on 1 and 73 DF,  p-value: 0.1663
+
+``` r
+anova(lmCHR.nods)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                  Df  Sum Sq  Mean Sq F value Pr(>F)
+    ## CHR_nods_sampled  1 0.04364 0.043640  1.9546 0.1663
+    ## Residuals        73 1.62985 0.022327
+
+``` r
+#Calculating coefficient of variation in the number of plants sampled across populations:
+cv(df.CHR$CHR_plants_sampled)
+```
+
+    ## [1] 47.78829
+
+``` r
+#Calculating coefficient of variation in the number of nodules sampled across populations:
+cv(df.CHR$CHR_nods_sampled)
+```
+
+    ## [1] 39.84127
+
+``` r
+# For the SI gene with respect to the number of samples sampled:
+lmSI.plants <- lm(Freq ~ SI_plants_sampled, data=df.SI)
+summary(lmSI.plants)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ SI_plants_sampled, data = df.SI)
+    ## 
+    ## Residuals:
+    ##       Min        1Q    Median        3Q       Max 
+    ## -0.088742 -0.036456 -0.008915  0.007816  0.305290 
+    ## 
+    ## Coefficients:
+    ##                    Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)        0.134092   0.015387   8.715 1.07e-13 ***
+    ## SI_plants_sampled -0.005524   0.001050  -5.258 9.23e-07 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.07214 on 93 degrees of freedom
+    ## Multiple R-squared:  0.2292, Adjusted R-squared:  0.2209 
+    ## F-statistic: 27.65 on 1 and 93 DF,  p-value: 9.235e-07
+
+``` r
+anova(lmSI.plants)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                   Df  Sum Sq  Mean Sq F value    Pr(>F)    
+    ## SI_plants_sampled  1 0.14390 0.143903  27.651 9.235e-07 ***
+    ## Residuals         93 0.48399 0.005204                      
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+# For the SI gene with respect to the number of nodules sampled:
+lmSI.nods <- lm(Freq ~ SI_nods_sampled, data=df.SI)
+summary(lmSI.nods)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ SI_nods_sampled, data = df.SI)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.06777 -0.04522 -0.03051  0.01762  0.28839 
+    ## 
+    ## Coefficients:
+    ##                   Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)      0.1445312  0.0155571   9.290 6.49e-15 ***
+    ## SI_nods_sampled -0.0012442  0.0002109  -5.899 5.88e-08 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.07009 on 93 degrees of freedom
+    ## Multiple R-squared:  0.2723, Adjusted R-squared:  0.2644 
+    ## F-statistic:  34.8 on 1 and 93 DF,  p-value: 5.876e-08
+
+``` r
+anova(lmSI.nods)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                 Df  Sum Sq  Mean Sq F value    Pr(>F)    
+    ## SI_nods_sampled  1 0.17096 0.170959  34.795 5.876e-08 ***
+    ## Residuals       93 0.45694 0.004913                      
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+#Calculating coefficient of variation in the number of plants sampled across populations:
+cv(df.SI$SI_plants_sampled)
+```
+
+    ## [1] 55.15893
+
+``` r
+#Calculating coefficient of variation in the number of nodules sampled across populations:
+cv(df.SI$SI_nods_sampled)
+```
+
+    ## [1] 52.40823
+
+Ploting these correlations:
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-9-1.png)
+
+For the chromosomal dataset there are no significant differences in genotype frequencies among populations and no correlation between genotype frequencies and sampling effort, whether plants or nodule isolates are used to quantify sampling.
+
+However, there were differences in symbiosis-island genotype frequencies among populations (and there were correlations between genotype frequencies and sampling effort. Thus, the fundamental argument of the TC is incorrect for the chromosomal dataset.
+
+2. The TC attempted to account for uneven sampling by relativizing fitness parameters within each population.
+-------------------------------------------------------------------------------------------------------------
+
+The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
+
+-   Let's define
+    *y*<sub>*X**A*</sub>
+     as the haplotype frequency of isolate X in Population A
+
+*y*<sub>*X**A*</sub> = *c**o**u**n**t**o**f**i**s**o**l**a**t**e**X*/*c**o**u**n**t**o**f**a**l**l**i**s**o**l**a**t**e**s**i**n**p**o**p**u**l**a**t**i**o**n**A*
+*y*<sub>*X**A*</sub> = *X*<sub>*i*</sub>/*X*<sub>*A*</sub>
+
+-   Let's define
+    *Y*<sub>*A*</sub>
+     as the mean strain frequency in Population A, estimated as the sum of the haplotype frequencies of all isolates found in population A divided by the count of all isolates in population A
+
+$$Y\_{A} = (\\sum\_{i=1}^XX\_{i}/X\_{A})/X\_{A}$$
+ Now if we were to estimate the relative fitness of haplotype X as Frederickson propose, the estimate would be based in the following equation where the haplotype frequency of isolate X in Population A would be divided by the mean haplotype frequency in Population A (i.e. YA):
+
+$$y\_{XA} = \[ X\_{i}/X\_{A}\]/Y\_{A} = \[ X\_{i}/X\_{A}\]/\[(\\sum\_{i=1}^XX\_{i}/X\_{A})/X\_{A}\]$$
+ To resolve this equation we have a division with a common denominator, and ultimately what we resolve is as follows:
+
+*y*<sub>*X**A*</sub> = *X*<sub>*i*</sub>/*X*<sub>*A*</sub>
+
+As it can be observed in the equation, conceptually just by estimating the haplotype frequency within populations we would be relativizing the haplotype frequencies. This indicates that in in Gano-Cohen the haplotype frequencies as a measure of fitness can be compared among populations as a proxy of relative fitness. However, if this is again relativized as Frederickson proposed different values are obtained.Let's compare these estimates:
+
+``` r
+tmp <- df %>% dplyr::group_by(Population) %>% dplyr::summarize(pop_mean_CHR=mean(as.numeric(`CHR genotype frequency`), na.rm=TRUE), pop_mean_SI=mean(as.numeric(`SI genotype frequency`), na.rm=TRUE)) #Calculate mean fitness for each population
+df <- merge(df, tmp, by="Population") #Merge data frames
+df$CHR_std <- df$`CHR genotype frequency`/df$pop_mean_CHR #Relative fitness within each population
+df$SI_std <- df$`SI genotype frequency`/df$pop_mean_SI #Relative fitness within each population
+df$RGR_std <- (df$mean_log10_RGR - mean(df$mean_log10_RGR, na.rm=TRUE))/sd(df$mean_log10_RGR, na.rm=TRUE) #Standardize trait by subtracting the mean and dividing by the standard deviation
+
+
+myvars <- c("Strain", "Population", "CHR genotype frequency", "CHR_std")
+myvars2 <- c("Strain", "Population", "SI genotype frequency", "SI_std")
+CHR.frequency <- df[myvars]
+CHR.frequency$CHR_nostd <-CHR.frequency$`CHR genotype frequency`
+long.CHR.frequency <- CHR.frequency %>% gather(`Frequency Type`, Frequency,CHR_nostd:CHR_std)
+CHRfreqplot <- ggplot(data=long.CHR.frequency, aes(x=Strain, y=Frequency, fill=`Frequency Type`)) +  geom_bar(colour="black" , stat= "identity", size=0.5, position=position_dodge(0.9)) +
+  scale_fill_manual(values = c("gray","#56B4E9"))
+SI.frequency <- df[myvars2]
+SI.frequency$SI_nostd <-SI.frequency$`SI genotype frequency`
+long.SI.frequency <- SI.frequency %>% gather(`Frequency Type`, Frequency,SI_nostd:SI_std)
+SIfreqplot <- ggplot(data=long.SI.frequency, aes(x=Strain, y=Frequency, fill=`Frequency Type`)) +  geom_bar(colour="black" , stat= "identity", size=0.5, position=position_dodge(0.9)) +
+  scale_fill_manual(values = c("gray","#56B4E9")) 
+  
+FrequencyEstimation.effect <- ggarrange(CHRfreqplot, SIfreqplot,ncol=2,nrow=1, common.legend = FALSE, legend="top") 
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-12-1.png)
+
+In this plot we can see how relativizing the haplotype frequencies (CHR\_std & SI\_std) can drastically change the original estimations obtained in Gano-Cohen (CHR\_nostd & SI\_nostd) and are not at all the same measures as they should be based on the above mathematical solution. We find it very difficult to interpret these data that are relativized twice.
+
+3. The TC attempted to account for uneven sampling by randomly sub-sampling the dataset to equalize sampling effort among populations.
+--------------------------------------------------------------------------------------------------------------------------------------
+
+For rarefaction methods, there is a classical dichotomy between sample-based versus individual-based sampling protocols, which in this case would equalize numbers of plants or numbers of nodule isolates sampled, respectively. Both rarefaction methods are valid for standardizing samples, but each strategy can change the estimates of community diversity and richness.
+
+The TC sub-sampled two or four plants from each population to calculate symbiosis-island and chromosome genotype frequencies, respectively. This sample-based approach was used on the argument that rhizobia genotypes are not randomly distributed among plants, and found no association between growth benefits provided by Bradyrhizobium strains and their local genotype frequencies
+
+Here we are re-estimating this rarefaction for comparison purposes. Note that differences in our p-value estimates with respect to the values reported in TC are associated with the randomization itself. Here we set our randomizations to be repeatable (set.seed=800).
+
+### Sampled-based approach, randomly selecting plants for each population
+
+#### For CHR:
+
+``` r
+set.seed(800)
+haplocount.CHRbyplant=NULL #This needs to be set up to store our final output of the random sampling
+diversity.table.CHR.final=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  for (site in unique(table_S1.CHR$Population)){
+    plantIDlist=subset(table_S1.CHR$Plant_ID,table_S1.CHR$Population==site, drop=TRUE)
+    plantID.bootstrap=sample(unique(plantIDlist),size=4,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(plantID.bootstrap) #Transforming into vector to subset data
+    new=table_S1.CHR[table_S1.CHR$Plant_ID %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$CHR_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyplant=rbind(haplocount.CHRbyplant,totalhaplocounts)  #combining all results
+  diversity.table.CHR <- totalhaplocounts %>% dplyr::group_by(Population) %>% dplyr::summarize(SimpsonD.CHR=1-sum((Freq^2)))  #This will calculate the diversity per population after rareraction --- needed for further analyses
+  diversity.table.CHR.final <- rbind(diversity.table.CHR.final, diversity.table.CHR) #this combines the results of all randomizations
+}
+colnames(haplocount.CHRbyplant) <- c("CHR_haplotype", "Freq", "Population") #Changing names of columns
+sumCHRbyplant = summarySE(data=haplocount.CHRbyplant, measurevar= "Freq", groupvars = c("Population", "CHR_haplotype")) #This calculates the mean, standard error and confidence intervals for the haplotype frequencies over 500 randomizations
+
+#Merging rarefried mean genotype frequencies by haplotype and population with growth measurements
+df$pophaploCHR <- paste0(df$Population,df$CHR_haplotype)
+sumCHRbyplant$pophaploCHR <- paste0(sumCHRbyplant$Population, sumCHRbyplant$CHR_haplotype)
+CHR.sum.byplant <- merge(sumCHRbyplant, df, by="pophaploCHR")
+```
+
+Testing if strain frequency is related with symbiotic effectiveness. Fit model for mean CHR genotype frequency and RGR from re-sampling plants within each population:
+
+``` r
+model1 <- lm(Freq~mean_log10_RGR, data=CHR.sum.byplant)
+summary(model1) 
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ mean_log10_RGR, data = CHR.sum.byplant)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.14396 -0.07075 -0.03778  0.00502  0.39087 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept)      0.3256     0.1171   2.779   0.0104 *
+    ## mean_log10_RGR  -0.2147     0.1303  -1.647   0.1125  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1408 on 24 degrees of freedom
+    ## Multiple R-squared:  0.1016, Adjusted R-squared:  0.06415 
+    ## F-statistic: 2.714 on 1 and 24 DF,  p-value: 0.1125
+
+As reported in TC the association between genotype frequencies for the CHR locus and symbiosis effectiveness is not significant.
+
+#### For SI:
+
+``` r
+set.seed(800)
+haplocount.SIbyplant=NULL #This needs to be set up to store our final output of the random sampling
+diversity.table.SI.final=NULL
+for (j in 1:1000) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  for (site in unique(table_S1.SI$Population)){
+    plantIDlist=subset(table_S1.SI$Plant_ID,table_S1.SI$Population==site, drop=TRUE)
+    plantID.bootstrap=sample(unique(plantIDlist),size=2,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(plantID.bootstrap) #Transforming into vector to subset data
+    new=table_S1.SI[table_S1.SI$Plant_ID %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.SIbyplant=rbind(haplocount.SIbyplant,totalhaplocounts)  #combining all results
+  diversity.table.SI <- totalhaplocounts %>% dplyr::group_by(Population) %>% dplyr::summarize(SimpsonD.SI=1-sum((Freq^2)))  #This will calculate the diversity 
+  diversity.table.SI.final <- rbind(diversity.table.SI.final, diversity.table.SI) #this combines the results of all randomizations
+}
+
+#haplocount.SIbyplant#This contains the haplotype frequencies per population after each of the 500 randomizations of the isolates
+#diversity.table.SI.final  # This calculates diversity per population
+colnames(haplocount.SIbyplant) <- c("SI_haplotype", "Freq", "Population")
+#This calculates the mean, standard error and confidence intervals for the haplotype frequencies over 500 randomizations
+sumSIbyplant = summarySE(data=haplocount.SIbyplant, measurevar= "Freq", groupvars = c("Population", "SI_haplotype"))
+#Merging rarefried mean genotype frequencies by haplotype and population
+df$pophaploSI <- paste0(df$Population,df$SI_haplotype)
+sumSIbyplant$pophaploSI <- paste0(sumSIbyplant$Population, sumSIbyplant$SI_haplotype)
+SI.sum.byplant <- merge(sumSIbyplant, df, by="pophaploSI")
+```
+
+Testing if strain frequency is related with symbiotic effectiveness. Fit model for mean SI genotype frequency and RGR from re-sampling plants within each population:
+
+``` r
+model2 <- lm(Freq~mean_log10_RGR, data=SI.sum.byplant)
+summary(model2) 
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ mean_log10_RGR, data = SI.sum.byplant)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.18636 -0.09375 -0.03933  0.08422  0.26987 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept)     0.28963    0.13346    2.17   0.0422 *
+    ## mean_log10_RGR -0.05838    0.14597   -0.40   0.6935  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1558 on 20 degrees of freedom
+    ## Multiple R-squared:  0.007933,   Adjusted R-squared:  -0.04167 
+    ## F-statistic: 0.1599 on 1 and 20 DF,  p-value: 0.6935
+
+As reported in TC the association between genotype frequencies for the SI locus and symbiosis effectiveness is not significant.
+
+Now we are ploting these correlations:
+
+``` r
+model1.plot <- ggplot(CHR.sum.byplant, aes(x=mean_log10_RGR, y=Freq, color=Population.x)) +
+geom_point() +    # Use hollow circles
+geom_smooth(method=lm, se=TRUE, linetype="dashed", color="dark gray") +
+geom_text(label=CHR.sum.byplant$Strain, vjust = 2, size=2.5) +
+xlab("Symbiotic effectiveness") + ylab("CHR Genotype Frequency") +
+ggtitle("Chromosome") +
+annotate("text", x=0.5, y=0.9, label = "R^2 == 0.06", parse=T) +
+annotate("text", x=0.5, y=0.82, label = "P == 0.113", parse=T) +
+guides(col = guide_legend(nrow = 1, title="Population")) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y =element_text(face="bold", vjust=1.0, size = 14),
+axis.text.x = element_text(size=12, colour ="black"), 
+axis.text.y = element_text(size=12, colour ="black"),
+panel.grid.major.y = element_blank(),
+panel.grid.minor.y = element_blank(),
+panel.grid.minor.x = element_blank(),
+panel.grid.major.x = element_blank(), 
+plot.title = element_text(hjust = 0.5),
+legend.position="top")
+
+model2.plot <- ggplot(SI.sum.byplant, aes(x=mean_log10_RGR, y=Freq, color=Population.x)) +
+geom_point() +    # Use hollow circles
+geom_smooth(method=lm, se=TRUE, linetype="dashed",color="dark gray") +
+geom_text(label=SI.sum.byplant$Strain, vjust = 2, size=2.5) +
+xlab("Symbiotic effectiveness") + ylab("SI Genotype Frequency") +
+ggtitle("Symbiosis island") +
+#annotate("text", x=0.3, y=0.9, label = "R^2 < 0.01", parse=T) +
+annotate("text", x=0.5, y=0.9, label = "R^2 == -0.041", parse=T) +
+annotate("text", x=0.5, y=0.82, label = "P == 0.694", parse=T) +
+guides(col = guide_legend(nrow = 1, title="Population")) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y =element_text(face="bold", vjust=1.0, size = 14),
+axis.text.x = element_text(size=12, colour ="black"), 
+axis.text.y = element_text(size=12, colour ="black"),
+panel.grid.major.y = element_blank(),
+panel.grid.minor.y = element_blank(),
+panel.grid.minor.x = element_blank(),
+panel.grid.major.x = element_blank(), 
+plot.title = element_text(hjust = 0.5),
+legend.position="top")
+
+
+Figure.2AB <- ggarrange(model1.plot, model2.plot, ncol=2, nrow=1, common.legend = TRUE, legend="top")
+Figure.2AB
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-17-1.png)
+
+### Individual-based approach, randomly selecting nodules
+
+We then took the alternative approach of performing individual-based rarefaction (i.e., by nodules) rather than sample-based (i.e., by plants). We randomly sub-sampled the populations to match the least number of nodule isolates sampled and averaged genotype frequencies across 500 randomizations. Minimal samples were 39 for the chromosome and 4 for symbiosis-island (or alternatively 14, after removing the Griffith Park population that had only four sequenced isolates). Using this approach, we recovered the same pattern as GCC, a significant negative association between the host-growth benefits provided by Bradyrhizobium strains and their local genotype frequencies.
+
+#### For CHR:
+
+``` r
+set.seed(800)
+haplocount.CHRbyNod=NULL #This needs to be set up to store our final output of the random sampling
+diversity.table.CHR.finalbynod=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  for (site in unique(table_S1.CHR$Population)){ #Sample within each population
+    Nodlist=subset(table_S1.CHR$Full_Strain_Name,table_S1.CHR$Population == site, drop=TRUE)
+    Nodlist.bootstrap=sample(Nodlist,size=39,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(Nodlist.bootstrap) #Transforming into vector to subset data
+    new=table_S1.CHR[table_S1.CHR$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled isolates. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$CHR_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyNod=rbind(haplocount.CHRbyNod,totalhaplocounts)  #combining all results
+  diversity.table.CHR <- totalhaplocounts %>% dplyr::group_by(Population) %>%   dplyr::summarize(SimpsonD.CHR=1-sum((Freq^2)))  #This will calculate the populations ' diversity 
+  diversity.table.CHR.finalbynod <- rbind(diversity.table.CHR.finalbynod, diversity.table.CHR)
+  }
+colnames(haplocount.CHRbyNod) <- c("CHR_haplotype", "Freq", "Population") #Modyfying names of the randomization
+#Merging rarefried data  by haplotype and population
+sumCHR.bynod = summarySE(data=haplocount.CHRbyNod, measurevar= "Freq", groupvars = c("Population", "CHR_haplotype"))
+#Merging rarefried mean genotype frequencies by haplotype and population
+df$pophaplo <- paste0(df$Population,df$CHR_haplotype)
+sumCHR.bynod$pophaplo <- paste0(sumCHR.bynod$Population, sumCHR.bynod$CHR_haplotype)
+CHR.sum.bynod <- merge(sumCHR.bynod, df, by="pophaplo") #Mergin the data with the table containing information for the relative growth
+```
+
+Testing if strain frequency is related with symbiotic effectiveness. Fit model for mean CHR genotype frequency and RGR from re-sampling plants within each population:
+
+``` r
+model3 <- lm(Freq~mean_log10_RGR, data=CHR.sum.bynod)
+summary(model3)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ mean_log10_RGR, data = CHR.sum.bynod)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.14014 -0.07981 -0.04129  0.01062  0.41458 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)   
+    ## (Intercept)      0.3355     0.1171   2.865  0.00854 **
+    ## mean_log10_RGR  -0.2707     0.1303  -2.078  0.04860 * 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1408 on 24 degrees of freedom
+    ## Multiple R-squared:  0.1525, Adjusted R-squared:  0.1171 
+    ## F-statistic: 4.317 on 1 and 24 DF,  p-value: 0.0486
+
+``` r
+anova(model3) #Significant
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                Df  Sum Sq  Mean Sq F value Pr(>F)  
+    ## mean_log10_RGR  1 0.08559 0.085588  4.3172 0.0486 *
+    ## Residuals      24 0.47580 0.019825                 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+This result supports GCC findings where symbiotic effectiveness is correlated with genotype frequencies of the CHR locus.
+
+#### For SI:
+
+``` r
+set.seed(800)
+haplocount.SIbyNod=NULL #This needs to be set up to store our final output of the random sampling
+diversity.table.SI.finalbynod=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  for (site in unique(table_S1.SI$Population)){
+    Nodlist=subset(table_S1.SI$Full_Strain_Name,table_S1.SI$Population==site, drop=TRUE)
+    Nodlist.bootstrap=sample(Nodlist,size=4,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(Nodlist.bootstrap) #Transforming into vector to subset data
+    new=table_S1.SI[table_S1.SI$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.SIbyNod=rbind(haplocount.SIbyNod,totalhaplocounts)  #combining all results
+  diversity.table.SI. <- totalhaplocounts %>% dplyr::group_by(Population) %>% dplyr::summarize(SimpsonD.SI=1-sum((Freq^2)))  #This will calculate the diversity 
+  diversity.table.SI.finalbynod <- rbind(diversity.table.SI.finalbynod, diversity.table.SI) #this combines the results of all randomizations
+}
+
+#haplocount.SIbyNod  #This contains the haplotype frequencies per population after each of the 500 randomizations of the isolates
+#diversity.table.SI.finalbynod 
+colnames(haplocount.SIbyNod) <- c("SI_haplotype", "Freq", "Population")
+
+#This calculates mean diversity estimates:
+sumdiversitybynodSI <- summarySE(data=diversity.table.SI.finalbynod, measurevar = "SimpsonD.SI", groupvars="Population")
+#This calculates the mean, standard error and confidence intervals for the haplotype frequencies over 500 randomizations
+sumSI.bynod = summarySE(data=haplocount.SIbyNod, measurevar= "Freq", groupvars = c("Population", "SI_haplotype"))
+#Merging rarefried mean genotype frequencies by haplotype and population
+df$pophaploSI <- paste0(df$Population,df$SI_haplotype)
+sumSI.bynod$pophaploSI <- paste0(sumSI.bynod$Population, sumSI.bynod$SI_haplotype)
+SI.sum.bynod <- merge(sumSI.bynod, df, by="pophaploSI") #Mergin the data with the table containing information for the relative growth
+```
+
+Testing if strain frequency is related with symbiotic effectiveness. Fit model for mean SI genotype frequency and RGR from re-sampling plants within each population:
+
+``` r
+model4 <- lm(Freq~mean_log10_RGR, data=SI.sum.bynod)
+summary(model4) 
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ mean_log10_RGR, data = SI.sum.bynod)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.05941 -0.03539 -0.01407  0.02337  0.15339 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)     0.36496    0.04155   8.784 2.67e-08 ***
+    ## mean_log10_RGR -0.08859    0.04544  -1.949   0.0654 .  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.04851 on 20 degrees of freedom
+    ## Multiple R-squared:  0.1597, Adjusted R-squared:  0.1177 
+    ## F-statistic:   3.8 on 1 and 20 DF,  p-value: 0.06541
+
+``` r
+anova(model4) #The correlation is not significant, but marginal
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                Df   Sum Sq   Mean Sq F value  Pr(>F)  
+    ## mean_log10_RGR  1 0.008942 0.0089417  3.8002 0.06541 .
+    ## Residuals      20 0.047059 0.0023529                  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+In this case the correlation between symbiotic effectiveness and genotype frequencies of the SI locus is not significant, but note that this is marginal.
+
+Now we will remove the population with the lowest number of nodules sampled (GRI) and re-run our rarefaction with the minimum number of nodules set to be 15 instead of 4 for the SI gene:
+
+``` r
+# Subsetting GRI from our data set:
+table_S1.SI.NoGRI <- subset(table_S1.SI, table_S1.SI$Population != "GRI", drop=TRUE) 
+df.NoGRI <- subset(df, df$Population !="GRI", drop=TRUE)
+
+set.seed(800)
+haplocount.SIbyNod.NO.GRI=NULL #This needs to be set up to store our final output of the random sampling
+diversity.table.SI.finalbynod=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  for (site in unique(table_S1.SI.NoGRI$Population)){
+    Nodlist=subset(table_S1.SI.NoGRI$Full_Strain_Name,table_S1.SI.NoGRI$Population==site, drop=TRUE)
+    Nodlist.bootstrap=sample(Nodlist,size=15,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(Nodlist.bootstrap) #Transforming into vector to subset data
+    new=table_S1.SI.NoGRI[table_S1.SI.NoGRI$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocountlist[[site]] <- haplocount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.SIbyNod.NO.GRI=rbind(haplocount.SIbyNod.NO.GRI,totalhaplocounts)  #combining all results
+  diversity.table.SI. <- totalhaplocounts %>% dplyr::group_by(Population) %>% dplyr::summarize(SimpsonD.SI=1-sum((Freq^2)))  #This will calculate the diversity 
+  diversity.table.SI.finalbynod <- rbind(diversity.table.SI.finalbynod, diversity.table.SI) #this combines the results of all randomizations
+}
+colnames(haplocount.SIbyNod.NO.GRI) <- c("SI_haplotype", "Freq", "Population")
+#This calculates the mean, standard error and confidence intervals for the haplotype frequencies over 500 randomizations
+sumSI.bynod.NoGRI = summarySE(data=haplocount.SIbyNod.NO.GRI, measurevar= "Freq", groupvars = c("Population", "SI_haplotype"))
+#Merging rarefried mean genotype frequencies by haplotype and population
+df$pophaploSI <- paste0(df$Population,df$SI_haplotype)
+sumSI.bynod.NoGRI$pophaploSI <- paste0(sumSI.bynod.NoGRI$Population, sumSI.bynod.NoGRI$SI_haplotype)
+#Mergin the data with the table containing information for the relative growth
+SI.sum.bynod.NoGRI <- merge(sumSI.bynod.NoGRI, df.NoGRI, by="pophaploSI") 
+```
+
+Testing if strain frequency is related with symbiotic effectiveness. Fit model for mean SI genotype frequency and RGR from re-sampling plants within each population:
+
+``` r
+model4.1 <- lm(Freq~mean_log10_RGR, data=SI.sum.bynod.NoGRI)
+summary(model4.1) #The correlation is not significant, but marginal
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = Freq ~ mean_log10_RGR, data = SI.sum.bynod.NoGRI)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.11706 -0.05475 -0.01381  0.04071  0.24084 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)     0.29625    0.07347   4.032 0.000865 ***
+    ## mean_log10_RGR -0.17945    0.08024  -2.237 0.039010 *  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.08482 on 17 degrees of freedom
+    ## Multiple R-squared:  0.2273, Adjusted R-squared:  0.1819 
+    ## F-statistic: 5.002 on 1 and 17 DF,  p-value: 0.03901
+
+``` r
+anova(model4.1)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: Freq
+    ##                Df   Sum Sq  Mean Sq F value  Pr(>F)  
+    ## mean_log10_RGR  1 0.035987 0.035987   5.002 0.03901 *
+    ## Residuals      17 0.122305 0.007194                  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+When the population with the lowest number of nodules sampled is removed the correlation between symbiotic effectiveness and genotype frequencies of the SI locus is significant, validating the findings in GCC.
+
+Now let's plot these correlations:
+
+``` r
+#Making figure
+model3.plot <- ggplot(CHR.sum.bynod, aes(x=mean_log10_RGR, y=Freq, color=Population.x)) +
+geom_point() +    # Use hollow circles
+geom_smooth(method=lm, se=TRUE, color=1) +
+geom_text(label=CHR.sum.bynod$Strain, vjust = 2) +
+xlab("Symbiotic effectiveness") + ylab("CHR Genotype Frequency") +
+annotate("text", x=0.3, y=0.6, label = "R^2 == 0.117", parse=T) +
+annotate("text", x=0.3, y=0.5, label = "P == 0.049", parse=T) +
+guides(col = guide_legend(nrow = 1, title="Population")) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y =element_text(face="bold", vjust=1.0, size = 14),
+axis.text.x = element_text(size=12, colour ="black"), 
+axis.text.y = element_text(size=12, colour ="black"),
+panel.grid.major.y = element_blank(),
+panel.grid.minor.y = element_blank(),
+panel.grid.minor.x = element_blank(),
+panel.grid.major.x = element_blank(), 
+plot.title = element_text(hjust = 0.5),
+legend.position="top")
+
+
+model4.plot <- ggplot(SI.sum.bynod, aes(x=mean_log10_RGR, y=Freq, color=Population.x)) +
+geom_point() +    # Use hollow circles
+geom_smooth(method=lm, se=TRUE, color="dark gray", linetype="dashed") +
+geom_text(label=SI.sum.bynod$Strain, vjust = 2, size=2.5) +
+xlab("Symbiotic effectiveness") + ylab("SI Genotype Frequency") +
+annotate("text", x=0.3, y=0.5, label = "R^2 == 0.118", parse=T) +
+ggtitle("Including GRI") +
+annotate("text", x=0.3, y=0.45, label = "P == 0.06", parse=T) +
+guides(col = guide_legend(nrow = 1, title="Population")) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y =element_text(face="bold", vjust=1.0, size = 14),
+axis.text.x = element_text(size=12, colour ="black"), 
+axis.text.y = element_text(size=12, colour ="black"),
+panel.grid.major.y = element_blank(),
+panel.grid.minor.y = element_blank(),
+panel.grid.minor.x = element_blank(),
+panel.grid.major.x = element_blank(), 
+plot.title = element_text(margin = margin(t = 10, b = -20),hjust = 0.5),
+legend.position="top")
+
+#Making plot when GRI is excluded:
+model4.1.plot <- ggplot(SI.sum.bynod.NoGRI, aes(x=mean_log10_RGR, y=Freq, color=Population.x)) +
+geom_point() +    # Use hollow circles
+geom_smooth(method=lm, se=TRUE, color="black", linetype="solid") +
+geom_text(label=SI.sum.bynod.NoGRI$Strain, vjust = 2, size=2.5) +
+xlab("Symbiotic effectiveness") + ylab("SI Genotype Frequency") +
+ggtitle("Excluding GRI") +
+annotate("text", x=0.3, y=0.5, label = "R^2 == 0.182", parse=T) +
+annotate("text", x=0.3, y=0.45, label = "P == 0.039", parse=T) +
+guides(col = guide_legend(nrow = 1, title="Population")) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y =element_text(face="bold", vjust=1.0, size = 14),
+axis.text.x = element_text(size=12, colour ="black"), 
+axis.text.y = element_text(size=12, colour ="black"),
+panel.grid.major.y = element_blank(),
+panel.grid.minor.y = element_blank(),
+panel.grid.minor.x = element_blank(),
+panel.grid.major.x = element_blank(), 
+plot.title = element_text(margin = margin(t = 10, b = -20),hjust = 0.5),
+legend.position="top")
+
+Figure.2CDE <- ggarrange(model3.plot, model4.plot,model4.1.plot, ncol=3, nrow=1, common.legend = TRUE, legend="top")
+
+Figure.2CDE
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-24-1.png)
+
+4. Comparing sampled-based and individual-based approaches
+----------------------------------------------------------
+
+Finally, we compared the sample-based and individual-based approaches to examine how each performed in terms of equalizing the populations. For instance, when performing sample-based rarefaction (i.e., by plants) this leads to variation in the number of nodule-isolates sampled, and when performing individual-bases rarefaction (i.e., by nodules) this leads to variation in the number of plants sampled. To compare the approaches we calculated the coefficient of variation among populations (CV), which is a unitless measure.
+
+First, we investigated the sample-based approach to examine how much variance is introduced in the number of nodules sampled in each population.For each iteration where plants are randomly selected per population we are counting how many nodules were sampled at this randomization
+
+### Testing if the number of nodules sampled changes when plants are randomized
+
+#### For CHR:
+
+``` r
+set.seed(800)
+haplocount.CHRbyplant=NULL #This needs to be set up to store our final output of the random sampling
+numberofnodules.CHR=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  nodcountlist=list()
+  for (site in unique(table_S1.CHR$Population)){
+    plantIDlist=subset(table_S1.CHR$Plant_ID,table_S1.CHR$Population==site, drop=TRUE)
+    plantID.bootstrap=sample(unique(plantIDlist),size=4,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(plantID.bootstrap) #Transforming into vector to subset data
+    new=table_S1.CHR[table_S1.CHR$Plant_ID %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$CHR_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    nodulelist=subset(new$Full_Strain_Name, new$Population==site) #creating a vector with the list of nodules sampled per site
+    totalnodules=length(nodulelist) #This tells me total number of nodules sampled
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocount$No.NodulesSampled <- totalnodules
+    haplocountlist[[site]] <- haplocount
+    nodcount=as.data.frame(totalnodules)
+    nodcount$Population <- site
+    nodcount$Iteration <- j
+    nodcountlist[[site]] <- nodcount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyplant=rbind(haplocount.CHRbyplant,totalhaplocounts)  #combining all results
+totalnodulecount <- do.call(rbind,nodcountlist)
+numberofnodules.CHR <- rbind(numberofnodules.CHR,totalnodulecount)
+}
+sumNodNumber.CHR = summarySE(data=numberofnodules.CHR,measurevar="totalnodules", group=c("Population"))
+```
+
+How much variation can we observe in the number of nodules sampled in our CHR dataset after rarefaction by plants?
+
+``` r
+cv(numberofnodules.CHR$totalnodules) #Estimating coefficient of variation
+```
+
+    ## [1] 56.93448
+
+Plotting average number of nodules sampled per population across randomizations of plants for the CHR gene:
+
+``` r
+#Plotting Number of nodules sampled after 500 randomizations:  
+nodcountCHR.plot <- ggplot(data = sumNodNumber.CHR, aes(x = Population, y = totalnodules, fill=Population)) + 
+  geom_bar(colour= "black", stat= "identity", size=0.5) +
+  geom_errorbar(aes(ymin=totalnodules-ci, ymax=totalnodules+ci), width=0.3, colour="black", position=position_dodge(0.9)) +
+ylab("Total Number of Nodules Sampled") +
+ggtitle("Number of nodules sampled\ after randomizing plants for the CHR gene") + 
+ylim(0,140) +
+annotate("text", x="ANZ", y=140, label = "CV == 56.935", parse=T) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y = element_blank(),
+axis.text.x = element_text(size=12, colour ="black"),
+axis.text.y = element_text(size=12, colour ="black")) 
+nodcountCHR.plot
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-27-1.png)
+
+#### For SI:
+
+``` r
+set.seed(800)
+haplocount.SIbyplant=NULL #This needs to be set up to store our final output of the random sampling
+numberofnodules.SI=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  nodcountlist=list()
+  for (site in unique(table_S1.SI$Population)){
+    plantIDlist=subset(table_S1.SI$Plant_ID,table_S1.SI$Population==site, drop=TRUE)
+    plantID.bootstrap=sample(unique(plantIDlist),size=2,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(plantID.bootstrap) #Transforming into vector to subset data
+    new=table_S1.SI[table_S1.SI$Plant_ID %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    nodulelist=subset(new$Full_Strain_Name, new$Population==site) #creating a vector with the list of nodules sampled per site
+    totalnodules=length(nodulelist) #This tells me total number of nodules sampled
+    haplo=length(unique(haplolist)) #This gives me the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocount$No.NodulesSampled <- totalnodules
+    haplocountlist[[site]] <- haplocount
+    nodcount=as.data.frame(totalnodules)
+    nodcount$Population <- site
+    nodcount$Iteration <- j
+    nodcountlist[[site]] <- nodcount
+  }
+totalhaplocounts = do.call(rbind, haplocountlist) 
+haplocount.SIbyplant=rbind(haplocount.SIbyplant,totalhaplocounts)  #combining all results
+totalnodulecount <- do.call(rbind,nodcountlist)
+numberofnodules.SI <- rbind(numberofnodules.SI,totalnodulecount)
+}
+sumNodNumberSI = summarySE(data=numberofnodules.SI,measurevar="totalnodules", group=c("Population")) # For nodule number
+```
+
+How much variation can we observe in the number of nodules sampled in our SI dataset after rarefaction by plants?
+
+``` r
+cv(numberofnodules.SI$totalnodules) #Estimating coefficient of variation
+```
+
+    ## [1] 75.52306
+
+Plotting average number of nodules per population across randomizations of plants for the SI gene:
+
+``` r
+nodcountSI.plot <- ggplot(data = sumNodNumberSI, aes(x = Population, y = totalnodules, fill=Population)) + 
+geom_bar(colour= "black", stat= "identity", size=0.5) +
+geom_errorbar(aes(ymin=totalnodules-ci, ymax=totalnodules+ci), width=0.3, colour="black", position=position_dodge(0.9)) +
+ # scale_fill_manual (values = c("blue","light gray","dark blue")) +
+ylab("Total Number of Nodules Sampled") +
+ggtitle("Number of nodules sampled\ after randomizing plants for the SI gene") + 
+ylim(0,140) +
+annotate("text", x="ANZ", y=140, label = "CV == 75.523 ", parse=T) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_text(face="bold", vjust=1.0, size = 14),
+axis.title.y = element_blank(),
+axis.text.x = element_text(size=12, colour ="black"),
+axis.text.y = element_text(size=12, colour ="black")) 
+nodcountSI.plot   
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-30-1.png)
+
+Next, we investigated the individual-based approach to examine how much variance is introduced in the number of plants sampled in each population.
+
+### Testing if the number of plants sampled changes when nodules are randomized
+
+For each iteration where nodules are randomly selected per population we are counting how many nodules were sampled at this randomization
+
+#### For CHR:
+
+``` r
+set.seed(800)
+haplocount.CHRbyNod=NULL #This needs to be set up to store our final output of the random sampling
+numberofplants.CHR=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+  Plantcountlist= list()
+  for (site in unique(table_S1.CHR$Population)){ #Sample within each population
+    Nodlist=subset(table_S1.CHR$Full_Strain_Name,table_S1.CHR$Population == site, drop=TRUE)
+    Nodlist.bootstrap=sample(Nodlist,size=39,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(Nodlist.bootstrap) #Transforming into vector to subset data
+    new=table_S1.CHR[table_S1.CHR$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled isolates. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$CHR_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    plantlist=subset(new$Plant_ID, new$Population==site) #creating a vector with the list of plants sampled per site
+    totalplants=length(unique(plantlist)) #This tells me total number of plants sampled
+    haplo=length(unique(haplolist)) #This gives the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocount$No.NodulesSampled <- totalnodules
+    haplocountlist[[site]] <- haplocount
+    plantcount=as.data.frame(totalplants)
+    plantcount$Population <- site
+    plantcount$Iteration <- j
+    Plantcountlist[[site]] <- plantcount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyplant=rbind(haplocount.CHRbyplant,totalhaplocounts)  #combining all results
+totalplantcount <- do.call(rbind,Plantcountlist)
+numberofplants.CHR <- rbind(numberofplants.CHR,totalplantcount)
+}
+
+sumPlantAfterRarefaction.CHR = summarySE(data=numberofplants.CHR,measurevar="totalplants", group=c("Population"))
+```
+
+How much variation can we observe in the number of plants sampled in our CHR dataset after rarefaction by nodules?
+
+``` r
+cv(numberofplants.CHR$totalplants)
+```
+
+    ## [1] 48.01126
+
+Ploting these results:
+
+``` r
+#Ploting number of plants sampled after rarefaction of nodules for the CHR gene:
+PlantcountCHR.plot <- ggplot(data = sumPlantAfterRarefaction.CHR, aes(x = Population, y = totalplants, fill=Population)) + 
+geom_bar(colour= "black", stat= "identity", size=0.5) +
+geom_errorbar(aes(ymin=totalplants-ci, ymax=totalplants+ci), width=0.3, colour="black", position=position_dodge(0.9)) +
+ylab("Total Number of Plants Sampled") + xlab("Population") +
+ggtitle("After rarefaction by nodules") + 
+ylim(0,140) +
+annotate("text", x="BMR", y=140, label = "CV == 48.013", parse=T) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_blank(),
+axis.title.y = element_text(size=12, colour ="black", face="bold") ,
+axis.text.x = element_text(size=12, colour ="black"),
+axis.text.y = element_text(size=12, colour ="black"),
+legend.position="none",
+plot.title = element_text(hjust = 0.5))
+PlantcountCHR.plot
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-33-1.png)
+
+#### For SI:
+
+``` r
+set.seed(800)
+haplocount.SIbyNod=NULL #This needs to be set up to store our final output of the random sampling
+numberofplants.SI=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+   Plantcountlist =list()
+  for (site in unique(table_S1.SI$Population)){
+    Nodlist=subset(table_S1.SI$Full_Strain_Name,table_S1.SI$Population==site, drop=TRUE)
+    Nodlist.bootstrap=sample(Nodlist,size=4,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(Nodlist.bootstrap) #Transforming into vector to subset data
+    new=table_S1.SI[table_S1.SI$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    plantlist=subset(new$Plant_ID, new$Population==site) #creating a vector with the list of plants sampled per site
+    totalplants=length(unique(plantlist)) #This tells me total number of plants sampled
+    haplo=length(unique(haplolist)) #This gives the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocount$No.NodulesSampled <- totalnodules
+    haplocountlist[[site]] <- haplocount
+    plantcount=as.data.frame(totalplants)
+    plantcount$Population <- site
+    plantcount$Iteration <- j
+    Plantcountlist[[site]] <- plantcount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyplant=rbind(haplocount.CHRbyplant,totalhaplocounts)  #combining all results
+totalplantcount <- do.call(rbind,Plantcountlist)
+numberofplants.SI <- rbind(numberofplants.SI,totalplantcount)
+}
+sumPlantAfterRarefaction.SI = summarySE(data=numberofplants.SI,measurevar="totalplants", group=c("Population"))
+```
+
+How much variation can we observe in the number of plants sampled in our SI dataset after rarefaction by nodules?
+
+``` r
+cv(numberofplants.SI$totalplants) 
+```
+
+    ## [1] 30.32649
+
+Ploting these results:
+
+``` r
+#Ploting number of plants sampled after rarefaction of nodules for the SI gene:
+PlantcountSI.plot <- ggplot(data = sumPlantAfterRarefaction.SI, aes(x = Population, y = totalplants, fill=Population)) + 
+geom_bar(colour= "black", stat= "identity", size=0.5) +
+geom_errorbar(aes(ymin=totalplants-ci, ymax=totalplants+ci), width=0.3, colour="black", position=position_dodge(0.9)) +
+ylab("Total Number of Plants Sampled") + xlab("Population") +
+ggtitle("After rarefaction by nodules when GRI is included") + 
+ylim(0,140) +
+annotate("text", x="BMR", y=140, label = "CV == 30.327", parse=T) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_blank(),
+axis.title.y = element_text(size=12, colour ="black", face="bold") ,
+axis.text.x = element_text(size=12, colour ="black"),
+axis.text.y = element_text(size=12, colour ="black"),
+legend.position="none",
+plot.title = element_text(hjust = 0.5))
+PlantcountSI.plot
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-36-1.png)
+
+What about when GRI is excluded?:
+
+``` r
+set.seed(800)
+haplocount.SIbyNod=NULL #This needs to be set up to store our final output of the random sampling
+numberofplants.SI.NoGRI=NULL
+for (j in 1:500) {  #This opens the loop to do the procedure randomly 500 times
+  haplocountlist = list()
+   Plantcountlist =list()
+  for (site in unique(table_S1.SI.NoGRI$Population)){
+    Nodlist=subset(table_S1.SI.NoGRI$Full_Strain_Name,table_S1.SI.NoGRI$Population==site, drop=TRUE)
+    Nodlist.bootstrap=sample(Nodlist,size=15,replace=FALSE) #creates a new sampled list of plants per site
+    outputVector=factor(Nodlist.bootstrap) #Transforming into vector to subset data
+    new=table_S1.SI.NoGRI[table_S1.SI.NoGRI$Full_Strain_Name %in% outputVector,]  #This creates new dataframe to calculate frequencies based in the new sampled plants. It extracts the information for the new sampled isolates from our original table_S1
+    haplolist=subset(new$SI_haplotype,new$Population==site) #creating a vector with the haplotypes per site
+    totalhaplo=length(haplolist) #Counting the total number of samples per site
+    plantlist=subset(new$Plant_ID, new$Population==site) #creating a vector with the list of plants sampled per site
+    totalplants=length(unique(plantlist)) #This tells me total number of plants sampled
+    haplo=length(unique(haplolist)) #This gives the number of haplotypes per each site
+    haplocount=as.data.frame(table(haplolist)/sum(table(haplolist))) #To get relative frequencies of haplotype per site:
+    haplocount$Population <- site
+    haplocount$No.NodulesSampled <- totalnodules
+    haplocountlist[[site]] <- haplocount
+    plantcount=as.data.frame(totalplants)
+    plantcount$Population <- site
+    plantcount$Iteration <- j
+    Plantcountlist[[site]] <- plantcount
+  }
+  totalhaplocounts = do.call(rbind, haplocountlist) 
+  haplocount.CHRbyplant=rbind(haplocount.CHRbyplant,totalhaplocounts)  #combining all results
+totalplantcount <- do.call(rbind,Plantcountlist)
+numberofplants.SI.NoGRI <- rbind(numberofplants.SI,totalplantcount)
+}
+sumPlantAfterRarefaction.SI.NoGRI = summarySE(data=numberofplants.SI,measurevar="totalplants", group=c("Population"))
+```
+
+How much variation can we observe in the number of plants sampled in our SI dataset after rarefaction by nodules when GRI is excluded?
+
+``` r
+cv(numberofplants.SI.NoGRI$totalplants) 
+```
+
+    ## [1] 30.77183
+
+Ploting this result:
+
+``` r
+PlantcountSI.NoGRI.plot <- ggplot(data = sumPlantAfterRarefaction.SI.NoGRI, aes(x = Population, y = totalplants, fill=Population)) + 
+geom_bar(colour= "black", stat= "identity", size=0.5) +
+geom_errorbar(aes(ymin=totalplants-ci, ymax=totalplants+ci), width=0.3, colour="black", position=position_dodge(0.9)) +
+ylab("Total Number of Plants Sampled") + xlab("Population") +
+ggtitle("After rarefaction by nodules when GRI is excluded") + 
+ylim(0,140) +
+annotate("text", x="BMR", y=140, label = "CV == 30.772", parse=T) +
+theme(panel.background = element_rect(fill = "white", colour = "black"), 
+axis.title.x = element_blank(),
+axis.title.y = element_text(size=12, colour ="black", face="bold") ,
+axis.text.x = element_text(size=12, colour ="black"),
+axis.text.y = element_text(size=12, colour ="black"),
+legend.position="none",
+plot.title = element_text(hjust = 0.5))
+
+PlantcountSI.NoGRI.plot
+```
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-39-1.png)
+
+By comparing the coefficient of variation (f-i, below), we can see the benefit of the individual-based approach in terms of equalizing the populations. The CV for plants sampled (g and i) is reduced for both the CHR and the SI loci when using the individual-based approach (compared to the CV of nodules sampled when rarefying by plants, f-h).
+
+![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-40-1.png)
