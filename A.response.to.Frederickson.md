@@ -420,9 +420,8 @@ For the chromosomal dataset there are no significant differences in genotype fre
 However, there were differences in symbiosis-island genotype frequencies among populations (and there were correlations between genotype frequencies and sampling effort. Thus, the fundamental argument of the TC is incorrect for the chromosomal dataset.
 
 <h2>
-1.  The TC attempted to account for uneven sampling by relativizing fitness parameters within each population
-    </h2>
-
+2.The TC attempted to account for uneven sampling by relativizing fitness parameters within each population
+</h2>
 The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
 
 Lets define the haplotype frequency of isolate X in Population "a" as Y<sub>xa</sub>, which is estimated by counting the number of isolates X and dividing by the total count of all isolates in population a:
@@ -475,9 +474,9 @@ FrequencyEstimation.effect <- ggarrange(CHRfreqplot, SIfreqplot,ncol=2,nrow=1, c
 
 In this plot we can see how relativizing the haplotype frequencies (CHR\_std & SI\_std) can drastically change the original estimations obtained in Gano-Cohen (CHR\_nostd & SI\_nostd) and are not at all the same measures as they should be based on the above mathematical solution. We find it very difficult to interpret these data that are relativized twice.
 
-3. The TC attempted to account for uneven sampling by randomly sub-sampling the dataset to equalize sampling effort among populations.
-======================================================================================================================================
-
+<h2>
+3.The TC attempted to account for uneven sampling by randomly sub-sampling the dataset to equalize sampling effort among populations
+</h2>
 For rarefaction methods, there is a classical dichotomy between sample-based versus individual-based sampling protocols, which in this case would equalize numbers of plants or numbers of nodule isolates sampled, respectively. Both rarefaction methods are valid for standardizing samples, but each strategy can change the estimates of community diversity and richness.
 
 The TC sub-sampled two or four plants from each population to calculate symbiosis-island and chromosome genotype frequencies, respectively. This sample-based approach was used on the argument that rhizobia genotypes are not randomly distributed among plants, and found no association between growth benefits provided by Bradyrhizobium strains and their local genotype frequencies
@@ -981,9 +980,9 @@ Figure.2CDE
 
 ![](A.response.to.Frederickson_files/figure-markdown_github/unnamed-chunk-24-1.png)
 
-4. Comparing sampled-based and individual-based approaches
-==========================================================
-
+<h2>
+4.Comparing sampled-based and individual-based approaches
+</h2>
 Finally, we compared the sample-based and individual-based approaches to examine how each performed in terms of equalizing the populations. For instance, when performing sample-based rarefaction (i.e., by plants) this leads to variation in the number of nodule-isolates sampled, and when performing individual-bases rarefaction (i.e., by nodules) this leads to variation in the number of plants sampled. To compare the approaches we calculated the coefficient of variation among populations (CV), which is a unitless measure.
 
 First, we investigated the sample-based approach to examine how much variance is introduced in the number of nodules sampled in each population.For each iteration where plants are randomly selected per population we are counting how many nodules were sampled at this randomization

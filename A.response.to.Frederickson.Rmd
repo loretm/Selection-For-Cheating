@@ -447,7 +447,7 @@ ggsave("Fig1.pdf", plot=Fig1, device="pdf", scale = 1, width = 30, height = 15, 
 #Fig1           
 ```
 
-<h2> 2.	The TC attempted to account for uneven sampling by relativizing fitness parameters within each population </h2>
+<h2>2.The TC attempted to account for uneven sampling by relativizing fitness parameters within each population</h2>
 
 The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. 
 Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
@@ -508,7 +508,7 @@ FrequencyEstimation.effect
 In this plot we can see how relativizing the haplotype frequencies (CHR_std & SI_std) can drastically change the original estimations obtained in Gano-Cohen (CHR_nostd & SI_nostd) and are not at all the same measures as they should be based on the above mathematical solution. We find it very difficult to interpret these data that are relativized twice. 
 
 
-# 3.	The TC attempted to account for uneven sampling by randomly sub-sampling the dataset to equalize sampling effort among populations. 
+<h2>3.The TC attempted to account for uneven sampling by randomly sub-sampling the dataset to equalize sampling effort among populations</h2> 
 
 For rarefaction methods, there is a classical dichotomy between sample-based versus individual-based sampling protocols, which in this case would equalize numbers of plants or numbers of nodule isolates sampled, respectively. Both rarefaction methods are valid for standardizing samples, but each strategy can change the estimates of community diversity and richness. 
 
@@ -886,7 +886,7 @@ Figure.2CDE
 
 
 
-# 4. Comparing sampled-based and individual-based approaches
+<h2> 4.Comparing sampled-based and individual-based approaches </h2>
 
 Finally, we compared the sample-based and individual-based approaches to examine how each performed in terms of equalizing the populations. For instance, when performing sample-based rarefaction (i.e., by plants) this leads to variation in the number of nodule-isolates sampled, and when performing individual-bases rarefaction (i.e., by nodules) this leads to variation in the number of plants sampled. To compare the approaches we calculated the coefficient of variation among populations (CV), which is a unitless measure.
 
