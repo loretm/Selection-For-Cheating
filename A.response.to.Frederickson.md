@@ -438,7 +438,7 @@ Now if we were to estimate the relative fitness of haplotype X as Frederickson p
 
 Y<sub>xa</sub> = (X</sub>i</sub>) / (X<sub>a</sub>/Y<sub>a</sub> , resolving this equation we would have the following:
 
-Y<sub>xa</sub> = (X<sub>i</sub>) / () X<sub>a</sub>) / ∑X</sub>i</sub> / X<sub>a</sub>)
+Y<sub>xa</sub> = (X<sub>i</sub>) / (X<sub>a</sub>) / ∑X</sub>i</sub> / X<sub>a</sub>)
 
 To resolve this equation we have a division with a common denominator, and ultimately what we resolve is our original equation:
 
