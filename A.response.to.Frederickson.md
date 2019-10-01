@@ -22,7 +22,7 @@ table_S4 <- read_csv("Table_S4.csv", col_types = cols(Strain = col_factor(levels
 table_S2 <- read_csv("Table_S2.csv", col_names = c("Strain", "Full_Strain_Name", "Population", "Latitude", "Longitude", "glnII_Haplotype", "glnII_Accession", "recA_Haplotype", "recA_Accession", "nodZ_Haplotype", "nodZ_Accession", "nolL_Haplotype", "nolL_Accession", "CHR_haplotype", "CHR genotype frequency" , "SI_haplotype", "SI genotype frequency"), col_types = cols(Strain = col_factor(levels = c("132", "133", "134", "135", "136", "137", "138", "139", "140", "141", "142", "143", "144", "145", "146", "147", "148", "149", "150", "151", "152", "153", "154", "155", "156", "157", "158", "159", "160", "161")), `CHR genotype frequency` = col_number(), `SI genotype frequency` = col_number(), Population = col_factor(levels = c("Bodega Marine Reserve", "Griffith Park", "Robert J. Bernard Biological Field Station", "University of California Riverside", "Burns Pinon Ridge Reserve", "Anza Borrego Desert State Park"))), skip = 4)
 ```
 
-Now we need to edit the files in the same fashion as done by Frederickson in her Github page:
+Now we need to edit the files in the same fashion as done by Frederickson in the associated Github page:
 
 ``` r
 table_S4$pop_block <- paste0(table_S4$Block, table_S4$`Host Line`) #Make a unique identifier for each block-host line combination
@@ -230,7 +230,7 @@ FIG.1AB
 ### Next, we test if variation in genotype frequencies among sampled populations is associated with sampling effort
 
 ``` r
-#Firts we need to combine the estimated frequencies with the  number of nodules and plants sampled per population
+#First we need to combine the estimated frequencies with the  number of nodules and plants sampled per population
 df.CHR <- merge(haplocount.CHRbyNod, df[,c(2,18:21)], by="Population") 
 df.CHR <- distinct(df.CHR, Population,haplolist, .keep_all= TRUE)
 df.SI <- merge(haplocount.SIbyNod, df[,c(2,18:21)], by="Population") 
@@ -422,7 +422,7 @@ However, there were differences in symbiosis-island genotype frequencies among p
 <h2>
 2.The TC attempted to account for uneven sampling by relativizing fitness parameters within each population
 </h2>
-The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
+The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness is critical to measuring selection. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
 
 Lets define the haplotype frequency of isolate X in Population "a" as Y<sub>xa</sub>, which is estimated by counting the number of isolates X and dividing by the total count of all isolates in population a:
 

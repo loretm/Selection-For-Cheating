@@ -44,7 +44,7 @@ table_S2 <- read_csv("Table_S2.csv", col_names = c("Strain", "Full_Strain_Name",
 
 ```
 
-Now we need to edit the files in the same fashion as done by Frederickson in her Github page:
+Now we need to edit the files in the same fashion as done by Frederickson in the associated Github page:
 
 ```{r message=FALSE}
 table_S4$pop_block <- paste0(table_S4$Block, table_S4$`Host Line`) #Make a unique identifier for each block-host line combination
@@ -223,7 +223,7 @@ FIG.1AB
 ### Next, we test if variation in genotype frequencies among sampled populations is associated with sampling effort
 
 ```{r}
-#Firts we need to combine the estimated frequencies with the  number of nodules and plants sampled per population
+#First we need to combine the estimated frequencies with the  number of nodules and plants sampled per population
 df.CHR <- merge(haplocount.CHRbyNod, df[,c(2,18:21)], by="Population") 
 df.CHR <- distinct(df.CHR, Population,haplolist, .keep_all= TRUE)
 df.SI <- merge(haplocount.SIbyNod, df[,c(2,18:21)], by="Population") 
@@ -449,7 +449,7 @@ ggsave("Fig1.pdf", plot=Fig1, device="pdf", scale = 1, width = 30, height = 15, 
 
 <h2>2.The TC attempted to account for uneven sampling by relativizing fitness parameters within each population</h2>
 
-The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness among populations is critical to measuring selection gradients. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. 
+The TC attempted to account for uneven sampling by relativizing fitness parameters within each population. This approach of normalizing fitness is critical to measuring selection. However, the data in GCC are already relativized with respect to the total number of genotypes sampled in a population. The TC thus divided the relative genotype frequencies by the mean relative genotype frequency at each population. 
 Specifically, genotype frequencies were estimated in the TC as the abundance of strain X present in population A divided by the total number of strains in population. Here is a mathematical explanation:
 
 Lets define the haplotype frequency of isolate X in Population "a" as Y<sub>xa</sub>, which is estimated by counting the number of isolates X and dividing by the total count of all isolates in population a:
